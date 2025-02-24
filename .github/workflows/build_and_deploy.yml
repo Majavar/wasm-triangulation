@@ -1,0 +1,65 @@
+name: Build and Deploy project in github pages
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup rust
+      run: |
+        rustup set profile minimal
+        rustup target add wasm32-unknown-unknown
+        rustup default 1.85.0
+
+    - name: Setup dioxus
+      run: |
+        cargo install cargo-binstall
+        cargo binstall -y dioxus-cli
+        cat > Dioxus.toml <<EOF
+        [application]
+        name = "triangulation"
+        [web.app]
+        title = "triangulation"
+        base_path = "wasm-triangulation"
+        EOF
+
+    - name: Install tailwindcss
+      run: |
+        curl -sLo tailwindcss https://github.com/tailwindlabs/tailwindcss/releases/download/v3.4.17/tailwindcss-linux-x64
+        chmod +x tailwindcss
+
+    - name: Build project
+      run: |
+        ./tailwindcss -i ./input.css -o ./assets/tailwind.css --minify
+        ~/.cargo/bin/dx bundle --release
+
+    - name: Upload static files as artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./target/dx/triangulation/release/web/public/
+
+  deploy:
+    needs: build
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+

@@ -1,0 +1,8 @@
+[build]
+rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]
+[profile.release]
+opt-level = "z"
+debug = false
+lto = true
+strip = true
+incremental = false
